@@ -12,6 +12,95 @@ export const BRAND_COLORS = {
 
 export const REGISTRATION_FEE_INR = 1500;
 export const TOTAL_PRIZE_POOL = '₹1,00,000';
+export const REGISTRATION_DEADLINE = '21 November 2026';
+export const REGISTRATION_DEADLINE_SHORT = '21-11-2026';
+
+export const COLLEGE_SPOC = {
+  role: 'College SPOC',
+  name: 'Mr. Ravikumar',
+  phone: '+91 97419 70005',
+  phoneRaw: '+919741970005',
+} as const;
+
+export const FACULTY_COORDINATORS = [
+  {
+    role: 'Faculty Coordinator',
+    name: 'Mrs. Sana Ara',
+    phone: '+91 91488 45386',
+    phoneRaw: '+919148845386',
+  },
+  {
+    role: 'Faculty Coordinator',
+    name: 'Ms. Sonia Fathima',
+    phone: '+91 82770 71071',
+    phoneRaw: '+918277071071',
+  },
+] as const;
+
+export const STUDENT_COORDINATORS = [
+  {
+    role: 'Student Coordinator',
+    name: 'Chirag K P',
+    phone: '+91 6362391028',
+    phoneRaw: '+916362391028',
+  },
+  {
+    role: 'Student Coordinator',
+    name: 'Sumukh Bhargav',
+    phone: '+91 8618376684',
+    phoneRaw: '+918618376684',
+  },
+] as const;
+
+export const EVENT_LOGISTICS = {
+  registrationDeadline: '21 November 2026',
+  registrationDeadlineShort: '21-11-2026',
+  registrationFeeINR: 1500,
+  paymentMethods: 'Payment Gateway / UPI (QR code & UPI ID)',
+  venue: 'BGS Seminar Hall, Adichunchanagiri Institute of Technology (AIT), Chikkamagaluru, Karnataka',
+  reportingTime: '9:00 AM onwards on 25 November 2026',
+  hackathonDuration: '24 Hours (Continuous Hackathon)',
+  dates: '25–26 November 2026',
+  collegeSpoc: COLLEGE_SPOC,
+  facultyCoordinators: FACULTY_COORDINATORS,
+  studentCoordinators: STUDENT_COORDINATORS,
+} as const;
+
+export interface HourlyScheduleSlot {
+  hourNumber: number;
+  timeRange: string;
+  day: 'Day 1' | 'Day 2';
+  title: string;
+  focus: string;
+  milestone?: string;
+}
+
+export const DETAILED_24_HOUR_SCHEDULE: HourlyScheduleSlot[] = [
+  { hourNumber: 1, timeRange: '11:30 – 12:30', day: 'Day 1', title: 'Commencement & Problem Analysis', focus: 'Problem statement deep-dive, domain breakdown, technical stack selection and architecture blueprinting.', milestone: 'Timer Starts (Hour 00)' },
+  { hourNumber: 2, timeRange: '12:30 – 13:30', day: 'Day 1', title: 'Scaffolding & Initial Setup', focus: 'Git repo initialization, environment scaffolding and CI/CD/database provisioning (Lunch 13:00 – 14:00).' },
+  { hourNumber: 3, timeRange: '13:30 – 14:30', day: 'Day 1', title: 'Data Modeling & Interface Schemas', focus: 'Database schema design, REST/GraphQL contract definitions and UI/UX wireframing.' },
+  { hourNumber: 4, timeRange: '14:30 – 15:30', day: 'Day 1', title: 'Sprint 01: Core Skeleton', focus: 'Frontend layout implementation, API routing setup and backend service scaffolding.' },
+  { hourNumber: 5, timeRange: '15:30 – 16:30', day: 'Day 1', title: 'Sprint 01: Initial Prototype', focus: 'CRUD operational endpoints, basic state management and hardware wiring.' },
+  { hourNumber: 6, timeRange: '16:30 – 17:30', day: 'Day 1', title: 'Mentorship Interaction Round 1', focus: 'Progress sync with domain mentors, architecture critique and technical feedback (High Tea 16:30 – 17:00).' },
+  { hourNumber: 7, timeRange: '17:30 – 18:30', day: 'Day 1', title: 'Sprint 02: Core Feature Build', focus: 'Algorithmic logic implementation, AI prompt/pipeline integration and cybersecurity safeguards.' },
+  { hourNumber: 8, timeRange: '18:30 – 19:30', day: 'Day 1', title: 'Sprint 02: Data & Sensor Interfacing', focus: 'Intelligent scoring/fraud models, transaction pipeline build or IoT sensor telemetry streaming.' },
+  { hourNumber: 9, timeRange: '19:30 – 20:30', day: 'Day 1', title: 'Module Integration & Dinner', focus: 'Frontend-backend wiring, service communication testing and dinner break (Dinner 20:00 – 21:00).' },
+  { hourNumber: 10, timeRange: '20:30 – 21:30', day: 'Day 1', title: 'Checkpoint 1 & Strategy Sync', focus: 'Internal milestone assessment, outstanding tasks triage and overnight sprint roadmap.' },
+  { hourNumber: 11, timeRange: '21:30 – 22:30', day: 'Day 1', title: 'Sprint 03: Overnight Deep Coding', focus: 'Complex feature development, authentication flows and transaction verification routines.' },
+  { hourNumber: 12, timeRange: '22:30 – 23:30', day: 'Day 1', title: 'Mid-Hack Stability Checkpoint', focus: 'Halfway mark review, bug triaging, code linting and database query optimization.' },
+  { hourNumber: 13, timeRange: '23:30 – 00:30', day: 'Day 1', title: 'Midnight Engineering', focus: 'Edge-case handling, error boundaries, resilient exception handling and data validation.' },
+  { hourNumber: 14, timeRange: '00:30 – 01:30', day: 'Day 2', title: 'Midnight Sprint: Module Hardening', focus: 'System-level integration, API latency tuning and security penetration self-checks.' },
+  { hourNumber: 15, timeRange: '01:30 – 02:30', day: 'Day 2', title: 'Deep Workflow Testing', focus: 'Simulated concurrency testing, payload stress tests and hardware circuit stability.' },
+  { hourNumber: 16, timeRange: '02:30 – 03:30', day: 'Day 2', title: 'Power Refresh & Refactoring', focus: 'Codebase cleanup, modular refactoring and midnight refreshment boost (03:00 – 03:30).' },
+  { hourNumber: 17, timeRange: '03:30 – 04:30', day: 'Day 2', title: 'Sprint 04: Advanced Capabilities', focus: 'Secondary features implementation, export capabilities and analytics dashboards.' },
+  { hourNumber: 18, timeRange: '04:30 – 05:30', day: 'Day 2', title: 'UI Polish & User Experience', focus: 'Responsive styling adjustments, micro-interactions, accessibility checks and feedback states.' },
+  { hourNumber: 19, timeRange: '05:30 – 06:30', day: 'Day 2', title: 'Dawn End-to-End Validation', focus: 'Full system run-throughs, seed data preparation and automated test execution.' },
+  { hourNumber: 20, timeRange: '06:30 – 07:30', day: 'Day 2', title: 'Mentorship Interaction Round 2', focus: 'Pre-submission technical review, demonstration flow rehearsal and final mentor inputs.' },
+  { hourNumber: 21, timeRange: '07:30 – 08:30', day: 'Day 2', title: 'Breakfast & Morning Refresh', focus: 'Breakfast recharge, morning refresh and team alignment on submission tasks (07:30 – 08:30).' },
+  { hourNumber: 22, timeRange: '08:30 – 09:30', day: 'Day 2', title: 'Sprint 05: Deployment & Freeze Prep', focus: 'Production build checks, cloud/local deployment verification and live demo staging.' },
+  { hourNumber: 23, timeRange: '09:30 – 10:30', day: 'Day 2', title: 'Documentation & Pitch Packaging', focus: 'Repository README finalization, architecture diagram exports, slide deck and demo video.' },
+  { hourNumber: 24, timeRange: '10:30 – 11:30', day: 'Day 2', title: 'Final Code Freeze & Submission', focus: 'Git push of final commit, project portal submission form upload and demo testing buffer.' },
+];
 
 export interface EventDomain {
   slug: string;
@@ -44,6 +133,7 @@ export const EVENT_DOMAINS: Record<string, EventDomain> = {
     description: 'Build intelligent solutions for digital security, financial technology, fraud detection and emerging cyber threats.',
     teamSizeMin: 2,
     teamSizeMax: 4,
+    duration: '24 Hours',
     rules: [
       'Develop a solution based on the given problem statement.',
       'Complete project development within the hackathon duration.',
@@ -60,6 +150,7 @@ export const EVENT_DOMAINS: Record<string, EventDomain> = {
     description: 'Transform ideas into functional digital products through frontend, backend and database development.',
     teamSizeMin: 2,
     teamSizeMax: 4,
+    duration: '24 Hours',
     rules: [
       'Build a functional application based on the given problem statement.',
       'Complete all development during the hackathon timeline.',
@@ -76,6 +167,7 @@ export const EVENT_DOMAINS: Record<string, EventDomain> = {
     description: 'Create practical hardware-based innovations by integrating sensors, electronics, embedded systems and intelligent technology.',
     teamSizeMin: 2,
     teamSizeMax: 4,
+    duration: '24 Hours',
     rules: [
       'Team size: 2 to 4 members.',
       'Participants must bring all required components, sensors, microcontrollers and hardware tools.',
