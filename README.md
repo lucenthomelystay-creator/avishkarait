@@ -32,7 +32,7 @@ Stop the server with Ctrl+C. For production, run `npm run build` followed by `np
 3. Treat `SUPABASE_SERVICE_ROLE_KEY` as a secret: keep it server-only, never prefix it with `NEXT_PUBLIC_`, and never commit it. Add `RESEND_API_KEY` and `ADMIN_EMAIL` for email notifications, and `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` only when enabling Razorpay payments.
 4. In Supabase Authentication / URL Configuration, set the production Site URL and add `https://your-deployment-domain/auth/callback` to Redirect URLs. Keep the localhost callback for development.
 5. Configure custom SMTP in Supabase Authentication / SMTP Settings if magic links must be delivered to users outside your Supabase organisation or you need more than the built-in email limit. Hosting on Vercel does not change Supabase's email limits.
-6. Configure passkeys only after choosing the final domain. Set the WebAuthn RP ID to that domain and its HTTPS origin. Changing the RP ID later invalidates passkeys enrolled against the previous one.
+6. Set `ADMIN_LOGIN_USERNAME` and `ADMIN_LOGIN_EMAIL` in the server environment. Create the matching Auth user manually in Supabase with a strong password and mark its email as confirmed; this setup does not require sending an email. The admin login form asks for the username and password (passphrase), while the mapped Auth email stays server-side. Team leader magic-link sign-in remains separate and still uses email.
 
 ## Configure Supabase
 
@@ -40,19 +40,20 @@ Stop the server with Ctrl+C. For production, run `npm run build` followed by `np
 2. Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `NEXT_PUBLIC_SITE_URL=http://localhost:3000`. The app also accepts the legacy `NEXT_PUBLIC_SUPABASE_ANON_KEY` variable.
 3. For a new project, install the CLI with `npm install supabase --save-dev`, initialize it with `npx supabase init`, then run `npx supabase login` and `npx supabase link --project-ref <project-ref>`. Preview with `npx supabase db push --dry-run --remote`; apply only after checking the target with `npx supabase db push --remote`. For an existing project with migrations previously run in the SQL Editor, use the SQL Editor for the new migration unless CLI migration history has been aligned.
 4. In Authentication / Providers, enable Email sign-in. In Authentication / URL Configuration, set `http://localhost:3000` as the Site URL and add `http://localhost:3000/auth/callback` to Redirect URLs. Add the production HTTPS origin and its `/auth/callback` before deployment.
-5. Create and verify the intended administrator account. In the Supabase SQL Editor, assign its role:
+5. Create the administrator Auth user in **Authentication / Users / Add user**. Enter the admin account email and a long unique password, and mark the email as confirmed in the dashboard. This is a manual account setup step; the app's admin login does not send or receive email. Set `ADMIN_LOGIN_EMAIL` to this same address and `ADMIN_LOGIN_USERNAME` to the username you want administrators to type. Keep both variables server-side in `.env.local` and Vercel; never add a `NEXT_PUBLIC_` prefix.
+
+6. In the Supabase SQL Editor, assign that account's profile role:
 
 ```sql
 update public.profiles
 set role = 'admin'
-where lower(email) = lower('verified-admin@example.com');
+where lower(email) = lower('admin-account@example.com');
 ```
 
-Replace the sample address with the verified admin email. Keep the SQL Editor limited to trusted project administrators. Do not put a service-role key in the app or any `NEXT_PUBLIC_` variable.
+Replace the sample with the account email. First confirm a profile row exists with `select id, email, role from public.profiles where lower(email) = lower('admin-account@example.com');`. If there is no row, verify the Auth user exists and that the `handle_new_auth_user` trigger from migration 001 is installed. Keep the SQL Editor limited to trusted project administrators. Never put a service-role key in browser code or a `NEXT_PUBLIC_` variable.
 
-6. For admin passkeys, open Authentication / Passkeys and enable passkey authentication. For local development set the WebAuthn RP ID to `localhost` and allowed origin to `http://localhost:3000`. Configure the production domain separately before deploying. Supabase passkeys are experimental and require a confirmed account.
-7. For the first setup only, sign in with the admin email using `/login?next=%2Fadmin%2Fpasskey%2Fsetup`, then register the passkey. The admin portal sign-in at `/admin/login` uses only email and passkey after setup; team leaders continue to use email magic links at `/login`.
-8. Sign in at `/admin` with the enrolled passkey and verify expected reads and writes before opening registration. Use a staging project first if production already contains event data.
+7. In local `.env.local`, set `ADMIN_LOGIN_USERNAME` and `ADMIN_LOGIN_EMAIL` alongside the Supabase URL and publishable key. Restart `npm run dev` after changing environment variables. In Vercel, add the same two server-side variables under Project / Settings / Environment Variables, then redeploy.
+8. Open `/admin/login` and sign in with the configured username and the password created for the Auth user. The account must have `profiles.role = 'admin'`. Team leaders continue to sign in through `/login` with magic links. Configure custom SMTP only if you need team leader sign-in emails delivered beyond Supabase's built-in testing limits.
 
 ## Database migrations
 
@@ -76,3 +77,4 @@ For an existing database, apply only the migrations not already applied, in orde
 - `/supabase/tests/portal_isolation.sql` contains participant isolation checks. Substitute real account UUIDs before running.
 
 The project URL and publishable key are set in the ignored local `.env.local` file. Apply the migrations in order before using the data-backed features.
+
