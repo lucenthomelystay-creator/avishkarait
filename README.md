@@ -25,6 +25,15 @@ npm run dev
 
 Stop the server with Ctrl+C. For production, run `npm run build` followed by `npm start`.
 
+## Deploy to Vercel
+
+1. Push this project to a private GitHub repository and import that repository from the Vercel dashboard. Vercel detects Next.js automatically.
+2. In the Vercel project settings, add `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS deployment URL (for example, `https://avishkar-2k26.vercel.app`). Set each variable for Production and Preview as needed.
+3. Treat `SUPABASE_SERVICE_ROLE_KEY` as a secret: keep it server-only, never prefix it with `NEXT_PUBLIC_`, and never commit it. Add `RESEND_API_KEY` and `ADMIN_EMAIL` for email notifications, and `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` only when enabling Razorpay payments.
+4. In Supabase Authentication / URL Configuration, set the production Site URL and add `https://your-deployment-domain/auth/callback` to Redirect URLs. Keep the localhost callback for development.
+5. Configure custom SMTP in Supabase Authentication / SMTP Settings if magic links must be delivered to users outside your Supabase organisation or you need more than the built-in email limit. Hosting on Vercel does not change Supabase's email limits.
+6. Configure passkeys only after choosing the final domain. Set the WebAuthn RP ID to that domain and its HTTPS origin. Changing the RP ID later invalidates passkeys enrolled against the previous one.
+
 ## Configure Supabase
 
 1. Create a Supabase project. In Project Settings / API, copy the Project URL and publishable key (or use the legacy anon key if that is what your project provides).
