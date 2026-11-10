@@ -66,8 +66,10 @@ Apply these files in order to a new project:
 5. `supabase/migrations/202611100005_civilx_official_rules.sql`
 6. `supabase/migrations/202611100006_accommodation_and_meal_qr.sql`
 7. `supabase/migrations/202611100007_preserve_admin_team_leaders.sql`
+8. `supabase/migrations/202611100008_align_mechspark_team_size.sql`
+9. `supabase/migrations/202611100009_confirmed_software_domains_and_logistics.sql`
 
-For an existing database, apply only the migrations not already applied, in order. Migration 006 adds random per-team QR credentials, accommodation requests and duplicate-protected meal check-ins. Migration 007 prevents team registration from replacing an administrator role.
+For an existing database, apply only the migrations not already applied, in order. Migration 006 adds random per-team QR credentials, accommodation requests and duplicate-protected meal check-ins. Migration 007 prevents team registration from replacing an administrator role. Migration 008 aligns MechSpark CAD Challenge team constraints (2-4 members). Migration 009 updates confirmed AI in Cybersecurity & FinTech and Full Stack Development team sizes (2-4 members, 24 hours), official coordinator contacts, registration deadline (21 Nov 2026), and UPI payment collection details.
 
 ## Operations
 
