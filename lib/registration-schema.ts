@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { eventDomains } from './domain-content';
 
 const email = z.string().trim().email().max(254);
 const github = z.string().trim().max(39).regex(/^[A-Za-z0-9-]*$/, 'Use a valid GitHub username.').optional().or(z.literal(''));
@@ -7,6 +8,24 @@ const memberSchema = z.object({
   email,
   githubUsername: github,
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OFFICIAL AVISHKAR 2K26 CHALLENGE TEAM-SIZE CONSTRAINTS
+// These enforce the same rules as the server-side Supabase function so that
+// the frontend gives immediate, accurate feedback before the round-trip.
+//
+// Challenge-specific sizes take precedence over domain-level sizes.
+// ─────────────────────────────────────────────────────────────────────────────
+function getChallengeSizeConstraints(challengeId: string): { min: number | null; max: number | null } {
+  for (const domain of eventDomains) {
+    const challenge = domain.challenges.find(c => c.id === challengeId);
+    if (!challenge) continue;
+    const min = challenge.minTeamSize ?? domain.minTeamSize ?? null;
+    const max = challenge.maxTeamSize ?? domain.maxTeamSize ?? null;
+    return { min, max };
+  }
+  return { min: null, max: null };
+}
 
 export const registrationInputSchema = z.object({
   leaderName: z.string().trim().min(2).max(120),
@@ -25,12 +44,43 @@ export const registrationInputSchema = z.object({
     rulesAccepted: z.literal(true),
   })).min(1).max(5),
 }).superRefine((values, ctx) => {
-  const domainIds=values.teams.map(team=>team.domainId);
-  if(new Set(domainIds).size!==domainIds.length)ctx.addIssue({code:z.ZodIssueCode.custom,message:'Use a separate domain only once in this registration.',path:['teams']});
-  values.teams.forEach((team,index)=>{
-    const emails=[values.leaderEmail,...team.members.map(member=>member.email)].map(value=>value.toLowerCase());
-    if(new Set(emails).size!==emails.length)ctx.addIssue({code:z.ZodIssueCode.custom,message:'Each team must use unique member email addresses.',path:['teams',index,'members']});
-    if(team.repositoryUrl&&!/^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/i.test(team.repositoryUrl))ctx.addIssue({code:z.ZodIssueCode.custom,message:'Enter a valid GitHub repository URL.',path:['teams',index,'repositoryUrl']});
+  // 1. Each domain may appear at most once per registration.
+  const domainIds = values.teams.map(team => team.domainId);
+  if (new Set(domainIds).size !== domainIds.length) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Use a separate domain only once in this registration.', path: ['teams'] });
+  }
+
+  values.teams.forEach((team, index) => {
+    // 2. All member emails (including leader) must be unique within the team.
+    const emails = [values.leaderEmail, ...team.members.map(m => m.email)].map(v => v.toLowerCase());
+    if (new Set(emails).size !== emails.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Each team must use unique member email addresses.', path: ['teams', index, 'members'] });
+    }
+
+    // 3. GitHub repository URL must be a valid GitHub URL if provided.
+    if (team.repositoryUrl && !/^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/i.test(team.repositoryUrl)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Enter a valid GitHub repository URL.', path: ['teams', index, 'repositoryUrl'] });
+    }
+
+    // 4. Enforce challenge-specific team size rules (mirrors the server-side Supabase function).
+    //    Team size = members array length + 1 (the leader counts as a member).
+    const teamSize = team.members.length + 1;
+    const { min, max } = getChallengeSizeConstraints(team.challengeId);
+
+    if (min !== null && teamSize < min) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `This challenge requires at least ${min} team member${min !== 1 ? 's' : ''} (including the leader). Current: ${teamSize}.`,
+        path: ['teams', index, 'members'],
+      });
+    }
+    if (max !== null && teamSize > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `This challenge allows no more than ${max} team member${max !== 1 ? 's' : ''} (including the leader). Current: ${teamSize}.`,
+        path: ['teams', index, 'members'],
+      });
+    }
   });
 });
 
