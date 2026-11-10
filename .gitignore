@@ -10,3 +10,9 @@ dist/
 next-env.d.ts
 .freebuff/
 .next-dev.log
+
+# Local backups and temporary files
+.mirror-avishkarait/
+supabase/.temp/
+app/admin/page.tsx.bak
+how --stat --oneline 4280eeb

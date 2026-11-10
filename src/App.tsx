@@ -10,19 +10,22 @@ import { ArrowDown, ArrowRight, ArrowUpRight, ChevronDown, Mail, MapPin, Menu, S
 type Page='home'|'about'|'domains'|'schedule'|'guidelines'|'faq'|'contact'|'register'|'login'|'event'|'privacy'|'terms'|'blog';
 const footerNav = [['About','/about'],['Domains','/domains'],['Schedule','/schedule'],['Chikkamagaluru','/blog'],['Guidelines','/guidelines'],['FAQ','/faq'],['Contact','/contact'],['Find Team','/lookup']] as const;
 const mobileNav = footerNav.filter(([label]) => !['About','FAQ'].includes(label));
+const desktopNav = footerNav.filter(([label]) => label !== 'FAQ');
 function Header(){
   const [open,setOpen]=useState(false);
   const [signedEmail,setSignedEmail]=useState<string|null>(null);
   const pathname=usePathname();
   useEffect(()=>{setOpen(false)},[pathname]);
   useEffect(()=>{let cancelled=false;fetch('/api/auth/session').then(response=>response.ok?response.json():null).then(data=>{if(!cancelled&&data?.authenticated)setSignedEmail(data.email??'Signed in')}).catch(()=>{});return()=>{cancelled=true}},[]);
-  // Header kept minimal (brand + primary CTA); primary navigation lives in footer.
   return <><div className="announcement"><span className="live-dot"/> 25–26 NOVEMBER 2026 <span className="announce-divider">/</span> AIT, CHIKKAMAGALURU <span className="announce-divider">/</span> PRIZE POOL ₹1,00,000</div>
   <header className="header top-navbar header-minimal">
     <Link href="/" className="brand top-brand" aria-label="AVISHKAR 2K26 home">
       
       <span className="brand-copy"><b>AVISHKAR <i>2K26</i></b><small>INNOVATION HACKATHON · AIT</small></span>
     </Link>
+    <nav className="nav desktop-topnav" aria-label="Primary navigation">
+      {desktopNav.map(([label, href]) => <Link key={href} href={href} className={pathname === href ? 'nav-link active' : 'nav-link'}>{label}</Link>)}
+    </nav>
     <div className="topnav-actions">
       <Link href="/register" className="button button-red nav-cta">Register <ArrowUpRight size={15}/></Link>
       <button className="menu-btn" onClick={()=>setOpen(!open)} aria-label="Toggle navigation">{open?<X/>:<Menu/>}</button>
