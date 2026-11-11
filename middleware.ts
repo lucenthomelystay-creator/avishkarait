@@ -19,10 +19,15 @@ export async function middleware(request: NextRequest) {
   });
 
   // getUser verifies the token with Supabase and refreshes cookies where needed.
-  await supabase.auth.getUser();
+  // Skip auth check for public routes (register, register/[slug], login)
+  const pathname = request.nextUrl.pathname;
+  if (!pathname.startsWith('/_next') && !pathname.startsWith('/api') && !pathname.startsWith('/register') && !pathname.startsWith('/login')) {
+    await supabase.auth.getUser();
+  }
+
   return response;
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
 };
