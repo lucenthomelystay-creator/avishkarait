@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTeamByUid, updatePaymentToPaid, getSiteSettings } from '@/lib/supabase-admin';
-import { verifyPaymentSignature } from '@/lib/razorpay';
-import { sendPaymentConfirmationEmail } from '@/lib/email';
+import { getTeamByUid, getSiteSettings, verifySubmissionByAdmin } from '@/lib/supabase-admin';
 
 export async function POST(req: NextRequest) {
   try {
-    const { teamUid, razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
+    const { teamUid, submissionId, adminEmail, status, rejectionReason } = await req.json();
 
-    if (!teamUid || !razorpay_order_id || !razorpay_payment_id) {
-      return NextResponse.json({ error: 'Missing payment verification credentials' }, { status: 400 });
+    if (!teamUid) {
+      return NextResponse.json({ error: 'Team ID is required' }, { status: 400 });
     }
 
     const team = await getTeamByUid(teamUid);
@@ -16,56 +14,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Team record not found' }, { status: 404 });
     }
 
-    // Verify cryptographic signature
-    const isValid = verifyPaymentSignature({
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      signature: razorpay_signature || '',
-    });
+    // Handle admin verification/rejection of payment proof
+    if (adminEmail && submissionId && status) {
+      await verifySubmissionByAdmin({
+        submissionId,
+        status: status as 'APPROVED' | 'REJECTED',
+        adminEmail,
+        rejectionReason,
+      });
 
-    if (!isValid) {
-      return NextResponse.json({ error: 'Payment signature verification failed' }, { status: 400 });
+      return NextResponse.json({
+        success: true,
+        message: status === 'APPROVED'
+          ? 'Payment proof approved. Team payment status updated to PAID.'
+          : 'Payment proof rejected.',
+      });
     }
 
-    // Update database to PAID
-    await updatePaymentToPaid({
-      teamId: team.id,
-      gatewayOrderId: razorpay_order_id,
-      gatewayPaymentId: razorpay_payment_id,
-      transactionRef: razorpay_payment_id,
-      method: 'GATEWAY',
-    });
-
+    // For non-admin queries, return team payment status
     const settings = await getSiteSettings();
-
-    // Trigger confirmation email
-    sendPaymentConfirmationEmail({
-      teamId: team.id,
-      teamUid: team.team_uid,
-      teamName: team.team_name,
-      eventDomain: team.events?.event_name || team.event_id,
-      collegeName: team.college_name,
-      teamLead: {
-        fullName: team.team_lead_name,
-        email: team.team_lead_email,
-      },
-      participants: (team.participants || []).map((p: any) => ({ fullName: p.participant_name })),
-      amountPaid: settings?.registration_fee || 1500,
-      transactionRef: razorpay_payment_id,
-      paymentDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-      hackathonName: settings?.hackathon_name,
-    }).catch((err) => {
-      console.error('Async payment confirmation email error:', err);
-    });
+    const payment = team.payments?.[0] || { payment_status: 'NOT PAID' };
+    const submission = team.payment_submissions?.[0] || { verification_status: 'PENDING' };
 
     return NextResponse.json({
       success: true,
-      message: 'Payment verified and confirmed successfully',
-      teamUid: team.team_uid,
+      paymentStatus: payment.payment_status,
+      paymentMethod: payment.payment_method,
+      submissionStatus: submission.verification_status,
+      registrationStatus: team.registration_status,
+      upiId: settings?.upi_id,
+      beneficiaryName: settings?.beneficiary_name,
     });
   } catch (error: any) {
     console.error('Verify Gateway Error:', error);
     return NextResponse.json({ error: error.message || 'Payment verification failed' }, { status: 500 });
   }
 }
-

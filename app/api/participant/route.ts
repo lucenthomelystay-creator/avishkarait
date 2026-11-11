@@ -1,46 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
+import { githubUsernameSchema } from '@/lib/github-username';
+import { normalizePaymentSettings } from '@/lib/payment';
 
-// ── rate-limiting store (in-memory, per-process) ─────────────────────────────
-// Simple rate limiter: tracks timestamps per endpoint+ip, drops if >5 requests/10s
 const rateLimitStore = new Map<string, number[]>();
-
 function checkRateLimit(key: string, maxRequests = 5, windowMs = 10000): boolean {
   const now = Date.now();
-  const timestamps = rateLimitStore.get(key) || [];
-  const recent = timestamps.filter((t) => now - t < windowMs);
+  const recent = (rateLimitStore.get(key) || []).filter((t) => now - t < windowMs);
   if (recent.length >= maxRequests) return false;
   recent.push(now);
   rateLimitStore.set(key, recent);
   return true;
 }
 
-// ── crypto-secure passphrase generation ───────────────────────────────────────
 function generatePassphrase(length: number = 12): string {
-  // Use Node.js crypto.getRandomValues for cryptographically secure randomness
   const buffer = crypto.getRandomValues(new Uint32Array(length));
   const characters =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()';
   let passphrase = '';
-  for (let i = 0; i < length; i++) {
-    passphrase += characters.charAt(buffer[i] % characters.length);
-  }
+  for (let i = 0; i < length; i++) passphrase += characters.charAt(buffer[i] % characters.length);
   return passphrase;
 }
 
-// ── validation schema using Zod ────────────────────────────────────────────────
 const participantSchema = z.object({
   leaderName: z.string().trim().min(2).max(120),
   leaderEmail: z.string().trim().email().max(254).toLowerCase(),
   leaderPhone: z.string().trim().min(7).max(20).regex(/^[+0-9() .-]+$/),
-  leaderGithubUsername: z
-    .string()
-    .trim()
-    .max(39)
-    .regex(/^[A-Za-z0-9-]*$/, 'Use a valid GitHub username.')
-    .optional()
-    .or(z.literal('')),
+  // Accepts 'octocat', '@octocat' and GitHub profile links; empty is allowed.
+  leaderGithubUsername: githubUsernameSchema,
   teams: z
     .array(
       z.object({
@@ -48,20 +36,14 @@ const participantSchema = z.object({
         institution: z.string().trim().min(2).max(180),
         city: z.string().trim().min(2).max(100),
         state: z.string().trim().max(100),
-        domainId: z.string().uuid(),
-        challengeId: z.string().uuid(),
+        domainId: z.string().min(1),
+        challengeId: z.string(),
         members: z
           .array(
             z.object({
               fullName: z.string().trim().min(2).max(120),
               email: z.string().trim().email().max(254).toLowerCase(),
-              githubUsername: z
-                .string()
-                .trim()
-                .max(39)
-                .regex(/^[A-Za-z0-9-]*$/, 'Use a valid GitHub username.')
-                .optional()
-                .or(z.literal('')),
+              githubUsername: githubUsernameSchema,
             })
           )
           .min(1)
@@ -75,47 +57,73 @@ const participantSchema = z.object({
 });
 type ParticipantInput = z.infer<typeof participantSchema>;
 
-// ── create admin supabase client (service-role only, no cookie persistence) ────
-// Type: Supabase client with service-role key for admin operations only
-let adminSupabase:
-  | {
-      auth: {
-        admin: {
-          createUser: (opts: {
-            email: string;
-            password: string;
-            email_confirm?: boolean;
-          }) => Promise<{ data: { user: any } | { user: null }; error: any }>;
-          deleteUser: (uid: string) => Promise<{ data: any; error: any }>;
-        };
-      };
-    }
-  | null = null;
+type DbDomain = {
+  id: string;
+  slug: string;
+  name: string;
+  registration_open: boolean;
+  event_details: { challenges?: Array<{ id: string; name: string }> } | null;
+};
+type ResolvedTeam = ParticipantInput['teams'][number] & {
+  domainId: string;
+  challengeId: string;
+  domainName: string;
+};
+
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 
-if (serviceRoleKey && supabaseUrl) {
-  try {
-    const { createClient } = require('@supabase/supabase-js');
-    const client = createClient(supabaseUrl, serviceRoleKey, {
+// Service-role client: bypasses RLS for registration writes.
+let serviceDb: SupabaseClient | null = null;
+try {
+  if (serviceRoleKey && supabaseUrl) {
+    serviceDb = createClient(supabaseUrl, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
-    // Type-narrow: this client has admin.auth available
-    adminSupabase = client as typeof adminSupabase;
-  } catch {
-    adminSupabase = null;
   }
+} catch {
+  serviceDb = null;
 }
 
-// ── helper: get team uid from team id ────────────────────────────────────────
-async function getTeamUid(supabase: any, teamId: string): Promise<string | null> {
-  const { data } = await supabase.from('teams').select('team_uid').eq('id', teamId).single();
-  return data?.team_uid || null;
-}
+// Resolve domain slug/uuid to the real domains.id and validate the challenge.
+async function resolveTeams(
+  input: ParticipantInput
+): Promise<{ ok: true; teams: ResolvedTeam[] } | { ok: false; error: string }> {
+  if (!serviceDb) return { ok: false, error: 'Registration database is not configured.' };
 
-// ── participant registration POST ─────────────────────────────────────────────
+  const { data, error } = await serviceDb
+    .from('domains')
+    .select('id, slug, name, registration_open, event_details')
+    .eq('is_active', true);
+  if (error) return { ok: false, error: `Could not load event domains: ${error.message}` };
+
+  const domains = (data ?? []) as DbDomain[];
+  const bySlug = new Map(domains.map((d) => [d.slug, d]));
+  const byId = new Map(domains.map((d) => [d.id, d]));
+  const teams: ResolvedTeam[] = [];
+
+  for (const team of input.teams) {
+    const domain = bySlug.get(team.domainId) ?? byId.get(team.domainId);
+    if (!domain) {
+      return {
+        ok: false,
+        error: `Unknown domain "${team.domainId}". Choose one of the active event domains.`,
+      };
+    }
+    if (!domain.registration_open) {
+      return { ok: false, error: `Registration is not open for ${domain.name}.` };
+    }
+    const challenges = domain.event_details?.challenges ?? [];
+    let challengeId = team.challengeId;
+    if (!challengeId && challenges.length === 1) challengeId = challenges[0].id;
+    if (challenges.length > 0 && !challenges.some((c) => c.id === challengeId)) {
+      return { ok: false, error: `Choose a valid challenge for ${domain.name}.` };
+    }
+    teams.push({ ...team, domainId: domain.id, challengeId, domainName: domain.name });
+  }
+  return { ok: true, teams };
+}
 export async function POST(request: NextRequest) {
-  // ── rate limiting ───────────────────────────────────────────────────────────
   const ip = request.ip ?? 'unknown';
   if (!checkRateLimit(`participant-register-${ip}`, 5, 10_000)) {
     return NextResponse.json(
@@ -124,26 +132,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ── config check: service-role key must be present ──────────────────────────
   if (!serviceRoleKey || !supabaseUrl) {
+    const missing = [
+      !supabaseUrl ? 'NEXT_PUBLIC_SUPABASE_URL' : null,
+      !serviceRoleKey ? 'SUPABASE_SERVICE_ROLE_KEY' : null,
+    ].filter(Boolean);
+    console.error('Participant registration missing configuration:', missing);
     return NextResponse.json(
-      {
-        error:
-          'Participant registration is not configured. Contact the event administrator.',
-      },
+      { error: `Participant registration is not configured (missing: ${missing.join(', ')}).` },
       { status: 503, headers: { 'cache-control': 'no-store' } }
     );
   }
 
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) {
+  const db = serviceDb;
+  if (!db) {
     return NextResponse.json(
-      { error: 'Supabase is not configured.' },
+      { error: 'Supabase admin client could not be initialised.' },
       { status: 503, headers: { 'cache-control': 'no-store' } }
     );
   }
 
-  // ── read and validate the request body ──────────────────────────────────────
   let body: unknown;
   try {
     body = await request.json();
@@ -166,25 +174,41 @@ export async function POST(request: NextRequest) {
   }
 
   const input = parsed.data;
-
-  // ── generate a secure passphrase (one-time only, never logged) ──────────────
+  const resolution = await resolveTeams(input);
+  if (!resolution.ok) {
+    return NextResponse.json(
+      { error: resolution.error },
+      { status: 400, headers: { 'cache-control': 'no-store' } }
+    );
+  }
+  const teams = resolution.teams;
   const passphrase = generatePassphrase();
 
-  // ── create the auth user via service-role admin API with email_confirm=true ─
-  const { data: authData, error: signUpError } = await adminSupabase!.auth.admin.createUser({
+  const { data: settingsRow } = await db
+    .from('registration_settings')
+    .select('upi_id, beneficiary_name, registration_fee, official_qr_image_url, payment_enabled')
+    .eq('singleton', true)
+    .maybeSingle();
+  const payment = normalizePaymentSettings(settingsRow);
+
+  // 1. auth user
+  const { data: authData, error: signUpError } = await db.auth.admin.createUser({
     email: input.leaderEmail,
     password: passphrase,
-    email_confirm: true, // ✅ Decision: auto-confirm; ownership not verified
+    email_confirm: true,
   });
 
   if (signUpError) {
-    console.error('Supabase admin createUser error:', signUpError);
-    // Duplicate email handling
+    console.error('AUTH createUser ERROR:', {
+      code: signUpError.code,
+      message: signUpError.message,
+      status: signUpError.status,
+    });
     if (
       signUpError.message &&
       (signUpError.message.includes('already registered') ||
-        signUpError.message.includes('duplicate key') ||
-        signUpError.message.includes('unique constraint'))
+        signUpError.message.includes('already been registered') ||
+        signUpError.message.includes('duplicate key'))
     ) {
       return NextResponse.json(
         { error: 'An account with this email is already registered.' },
@@ -192,229 +216,238 @@ export async function POST(request: NextRequest) {
       );
     }
     return NextResponse.json(
-      { error: 'Could not create participant account.' },
+      { error: `Could not create participant account: ${signUpError.message}` },
       { status: 500, headers: { 'cache-control': 'no-store' } }
     );
   }
-
-  // ── if user is null (existing account), prevent duplicate ───────────────────
-  if (authData.user === null) {
+  if (!authData.user) {
     return NextResponse.json(
       { error: 'An account with this email is already registered.' },
       { status: 409, headers: { 'cache-control': 'no-store' } }
     );
   }
+  const userId = authData.user.id;
 
-  // ── helper: delete auth user using admin client ─────────────────────────────
-  const deleteAuthUser = async (userId: string) => {
-    try {
-      await adminSupabase!.auth.admin.deleteUser(userId);
-    } catch (e) {
-      console.warn('Failed to delete auth user:', e);
+  const createdTeamIds: string[] = [];
+  const createdRegistrationIds: string[] = [];
+
+  // Declared as an arrow function so TypeScript keeps the narrowed (non-null)
+  // type of `db` established above; a hoisted function declaration widens it.
+  const rollback = async () => {
+    for (const teamId of createdTeamIds) {
+      await db.from('team_members').delete().eq('team_id', teamId);
+      await db.from('teams').delete().eq('id', teamId);
     }
+    for (const regId of createdRegistrationIds) {
+      await db.from('registrations').delete().eq('id', regId);
+    }
+    // registrations/teams reference profiles with ON DELETE RESTRICT, so they
+    // must be removed first. Deleting the auth user cascades to profiles.
+    await db.auth.admin.deleteUser(userId);
   };
 
-  // ── create profile entry ────────────────────────────────────────────────────
-  const { error: profileError } = await supabase
+  // 2. profile: `on_auth_user_created` already inserted this row, so update it.
+  const { data: updatedProfiles, error: profileError } = await db
     .from('profiles')
-    .insert({
-      id: authData.user.id,
+    .update({
       full_name: input.leaderName,
-      email: input.leaderEmail,
-      role: 'participant',
-    });
+      phone: input.leaderPhone,
+      github_username: input.leaderGithubUsername || null,
+    })
+    .eq('id', userId)
+    .select('id');
 
   if (profileError) {
-    await deleteAuthUser(authData.user.id);
+    console.error('PROFILE UPDATE ERROR:', {
+      code: profileError.code,
+      message: profileError.message,
+      details: profileError.details,
+      hint: profileError.hint,
+    });
+    await rollback();
     return NextResponse.json(
-      { error: 'Could not create participant profile.' },
+      { error: `Could not update participant profile: ${profileError.message}` },
       { status: 500, headers: { 'cache-control': 'no-store' } }
     );
   }
 
-  // ── create registration records for ALL teams ───────────────────────────────
-  const registrations: Array<{ id: string; teamName: string }> = [];
-  const teamIds: string[] = [];
-
-  for (let t = 0; t < input.teams.length; t++) {
-    const teamInput = input.teams[t];
-
-    // ── create the registration record ──────────────────────────────────────────
-    // Status is 'pending' per schema enum, awaiting admin approval
-    const registrationPayload = {
-      leader_id: authData.user.id,
-      team_name: teamInput.teamName,
-      institution: teamInput.institution,
-      domain_id: teamInput.domainId,
-      status: 'pending' as const,
-      rules_accepted: teamInput.rulesAccepted,
-    };
-
-    const { error: registrationError } = await supabase
-      .from('registrations')
-      .insert([registrationPayload]);
-
-    if (registrationError) {
-      // Roll back all previously created registrations, teams, members, profiles, auth user
-      for (let i = 0; i < registrations.length; i++) {
-        await supabase.from('registrations').delete().eq('id', registrations[i].id);
-        await supabase.from('teams').delete().eq('id', teamIds[i]);
-        await supabase.from('team_members').delete().eq('team_id', teamIds[i]);
-      }
-      await supabase.from('profiles').delete().eq('id', authData.user.id);
-      await deleteAuthUser(authData.user.id);
+  // Defensive fallback if the trigger is not installed.
+  if (!updatedProfiles || updatedProfiles.length === 0) {
+    const { error: insertError } = await db.from('profiles').insert({
+      id: userId,
+      full_name: input.leaderName,
+      email: input.leaderEmail,
+      phone: input.leaderPhone,
+      github_username: input.leaderGithubUsername || null,
+      role: 'participant',
+    });
+    if (insertError) {
+      console.error('PROFILE INSERT FALLBACK ERROR:', {
+        code: insertError.code,
+        message: insertError.message,
+      });
+      await rollback();
       return NextResponse.json(
-        { error: 'Could not create registration record.' },
+        { error: `Could not create participant profile: ${insertError.message}` },
         { status: 500, headers: { 'cache-control': 'no-store' } }
       );
     }
-
-    // Fetch the actual inserted registration ID
-    const { data: regData, error: regSelectError } = await supabase
-      .from('registrations')
-      .select('id')
-      .eq('leader_id', authData.user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (regSelectError) {
-      // Roll back
-      for (let i = 0; i < registrations.length; i++) {
-        await supabase.from('registrations').delete().eq('id', registrations[i].id);
-        await supabase.from('teams').delete().eq('id', teamIds[i]);
-        await supabase.from('team_members').delete().eq('team_id', teamIds[i]);
-      }
-      await supabase.from('profiles').delete().eq('id', authData.user.id);
-      await deleteAuthUser(authData.user.id);
-      return NextResponse.json(
-        { error: 'Could not fetch registration record.' },
-        { status: 500, headers: { 'cache-control': 'no-store' } }
-      );
-    }
-
-    registrations.push({ id: regData.id, teamName: teamInput.teamName });
-    teamIds.push('' as string); // placeholder, will be set after team creation
   }
 
-  // ── create team records and members for ALL teams ────────────────────────────
-  for (let t = 0; t < input.teams.length; t++) {
-    const teamInput = input.teams[t];
-    const registrationId = registrations[t].id;
+  // 3-5. registrations, teams and members
+  const saved: Array<{
+    referenceId: string;
+    teamId: string;
+    teamUid: string | null;
+    domain: string;
+    status: string;
+    paymentStatus: string;
+  }> = [];
 
-    // ── create the team record ──────────────────────────────────────────────────
-    // CRITICAL: Use the registrationId from the corresponding registration record
-    const { error: teamError, data: teamData } = await supabase
-      .from('teams')
+  for (const team of teams) {
+    const { data: reg, error: regError } = await db
+      .from('registrations')
       .insert({
-        registration_id: registrationId,
-        name: teamInput.teamName,
-        institution: teamInput.institution,
-        domain_id: teamInput.domainId,
-        leader_id: authData.user.id,
+        leader_id: userId,
+        team_name: team.teamName,
+        institution: team.institution,
+        domain_id: team.domainId,
+        challenge_id: team.challengeId,
+        repository_url: team.repositoryUrl?.trim() || null,
+        rules_accepted_at: new Date().toISOString(),
+        status: 'pending',
+        payment_amount: payment.fee,
+        payment_status: 'NOT PAID',
       })
-      .select('id')
+      .select('id, reference_id, status, team_uid')
       .single();
 
-    if (teamError || !teamData?.id) {
-      // Roll back: delete this team, all previous teams/registrations/members, profile, auth user
-      await supabase.from('teams').delete().eq('id', teamData?.id);
-      for (let i = 0; i < t; i++) {
-        await supabase.from('teams').delete().eq('id', teamIds[i]);
-        await supabase.from('registrations').delete().eq('id', registrations[i].id);
-        await supabase.from('team_members').delete().eq('team_id', teamIds[i]);
-      }
-      await supabase.from('profiles').delete().eq('id', authData.user.id);
-      await deleteAuthUser(authData.user.id);
-      return NextResponse.json(
-        { error: 'Could not create team record.' },
-        { status: 500, headers: { 'cache-control': 'no-store' } }
-      );
-    }
-
-    const teamId = teamData.id;
-    teamIds[t] = teamId; // Save the actual team ID
-
-    // ── create team members (including leader as first member) ──────────────────
-    const membersArray = teamInput.members || [];
-    const memberErrors: string[] = [];
-
-    for (let i = 0; i < membersArray.length; i++) {
-      const member = membersArray[i];
-      const isLeader = i === 0; // First member is the leader
-      const memberEmail = member.email || input.leaderEmail;
-
-      const { error: memberError } = await supabase
-        .from('team_members')
-        .insert({
-          team_id: teamId, // actual team DB ID
-          profile_id: authData.user.id, // leader's profile
-          full_name: member.fullName || input.leaderName,
-          email: memberEmail,
-          github_username: member.githubUsername || '',
-          is_leader: isLeader,
-        });
-
-      if (memberError) {
-        memberErrors.push(memberError.message);
-        console.error(`Error creating team member ${i} for team ${t + 1}:`, memberError);
-      }
-    }
-
-    // ── complete rollback on member creation errors ─────────────────────────────
-    if (memberErrors.length > 0) {
-      // Roll back: delete team members, team, registration, and this team's slot
-      await supabase.from('team_members').delete().eq('team_id', teamId);
-      await supabase.from('teams').delete().eq('id', teamId);
-      for (let i = 0; i < t; i++) {
-        await supabase.from('teams').delete().eq('id', teamIds[i]);
-        await supabase.from('registrations').delete().eq('id', registrations[i].id);
-        await supabase.from('team_members').delete().eq('team_id', teamIds[i]);
-      }
-      await supabase.from('profiles').delete().eq('id', authData.user.id);
-      await deleteAuthUser(authData.user.id);
+    if (regError || !reg) {
+      console.error('REGISTRATION INSERT ERROR:', {
+        code: regError?.code,
+        message: regError?.message,
+        details: regError?.details,
+        hint: regError?.hint,
+      });
+      await rollback();
       return NextResponse.json(
         {
-          error:
-            'Registration failed due to team member creation errors. All records have been rolled back.',
-          details: memberErrors,
+          error: `Could not create registration for ${team.teamName}: ${
+            regError?.message ?? 'no row returned'
+          }`,
         },
         { status: 500, headers: { 'cache-control': 'no-store' } }
       );
     }
-  }
+    createdRegistrationIds.push(reg.id);
 
-  // ── RETURN SUCCESS: passphrase included ONLY for one-time display ───────────
-  // Cache-Control: no-store on the response; passphrase never logged or persisted
-  // Build summary of all created registrations and team UIDs
-  const savedRegistrations = [];
-  for (let t = 0; t < input.teams.length; t++) {
-    const teamUid = await getTeamUid(supabase, teamIds[t]!);
-    savedRegistrations.push({
-      registrationId: registrations[t].id,
-      teamId: teamIds[t]!,
-      teamUid: teamUid,
-      domain: input.teams[t].domainId,
-      referenceId: 'ref-' + t,
-      status: 'pending',
+    const { data: teamRow, error: teamError } = await db
+      .from('teams')
+      .insert({
+        registration_id: reg.id,
+        name: team.teamName,
+        institution: team.institution,
+        domain_id: team.domainId,
+        challenge_id: team.challengeId,
+        leader_id: userId,
+      })
+      .select('id')
+      .single();
+
+    if (teamError || !teamRow) {
+      console.error('TEAM INSERT ERROR:', {
+        code: teamError?.code,
+        message: teamError?.message,
+        details: teamError?.details,
+        hint: teamError?.hint,
+      });
+      await rollback();
+      return NextResponse.json(
+        {
+          error: `Could not create team ${team.teamName}: ${
+            teamError?.message ?? 'no row returned'
+          }`,
+        },
+        { status: 500, headers: { 'cache-control': 'no-store' } }
+      );
+    }
+    createdTeamIds.push(teamRow.id);
+
+    // leader is the single is_leader row for this team
+    const { error: leaderError } = await db.from('team_members').insert({
+      team_id: teamRow.id,
+      profile_id: userId,
+      full_name: input.leaderName,
+      email: input.leaderEmail,
+      github_username: input.leaderGithubUsername || null,
+      is_leader: true,
+    });
+
+    if (leaderError) {
+      console.error('LEADER MEMBER INSERT ERROR:', {
+        code: leaderError.code,
+        message: leaderError.message,
+        details: leaderError.details,
+      });
+      await rollback();
+      return NextResponse.json(
+        { error: `Could not add the team leader: ${leaderError.message}` },
+        { status: 500, headers: { 'cache-control': 'no-store' } }
+      );
+    }
+
+    for (const member of team.members) {
+      if (member.email === input.leaderEmail) continue; // already added above
+      const { error: memberError } = await db.from('team_members').insert({
+        team_id: teamRow.id,
+        full_name: member.fullName,
+        email: member.email,
+        github_username: member.githubUsername || null,
+        is_leader: false,
+      });
+      if (memberError) {
+        console.error('MEMBER INSERT ERROR:', {
+          code: memberError.code,
+          message: memberError.message,
+          details: memberError.details,
+        });
+        await rollback();
+        return NextResponse.json(
+          { error: `Could not add team member ${member.email}: ${memberError.message}` },
+          { status: 500, headers: { 'cache-control': 'no-store' } }
+        );
+      }
+    }
+
+    saved.push({
+      referenceId: reg.reference_id as string,
+      teamId: teamRow.id,
+      teamUid: (reg.team_uid as string | null) ?? null,
+      domain: team.domainName,
+      status: reg.status as string,
+      paymentStatus: 'NOT PAID',
     });
   }
 
   return NextResponse.json(
     {
       success: true,
-      participantId: authData.user.id,
+      participantId: userId,
       email: input.leaderEmail,
-      passphrase: passphrase, // ONE-TIME DISPLAY - then discard by client
+      passphrase,
       message:
         'Account created successfully. Your passphrase is displayed above - please copy and save it securely.',
-      registrations: savedRegistrations,
+      paymentEnabled: payment.enabled,
+      upiId: payment.upiId,
+      beneficiaryName: payment.beneficiaryName,
+      registrationFee: payment.fee,
+      qrCodeUrl: payment.qrCodeUrl,
+      registrations: saved,
     },
     {
       status: 201,
       headers: {
         'cache-control': 'no-store',
-        // Security headers to prevent passphrase leakage
         'x-content-type-options': 'nosniff',
         'x-frame-options': 'DENY',
       },
