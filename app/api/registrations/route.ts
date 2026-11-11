@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   if (!supabase) return NextResponse.json({ error: 'Supabase is not configured. Registration has not been submitted.' }, { status: 503 });
 
   const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user?.email || !user.email_confirmed_at) return NextResponse.json({ error: 'Verify the team leader email with its Supabase magic link before registering.' }, { status: 401 });
+  if (authError || !user?.email) return NextResponse.json({ error: 'Sign in required to register a participant.' }, { status: 401 });
 
   let payload: unknown;
   try { payload = await request.json(); }

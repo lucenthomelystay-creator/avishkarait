@@ -27,7 +27,7 @@ export default function DomainExperience({mode='cards',slug}:{mode?:'cards'|'det
         <div className="experience-card-top"><span>{domain.number} / {domain.code}</span><Icon size={23}/></div>
         <h3>{domain.name}</h3><p>{domain.short}</p>
         <div className="experience-facts"><span>TEAM SIZE <b>{teamSize(domain)}</b></span>{domain.duration&&<span>DURATION <b>{domain.duration}</b></span>}<span>REGISTRATION <b>{domain.registrationOpen?'Open':'To be announced'}</b></span></div>
-        <div className="experience-actions"><button type="button" className="text-link" onClick={()=>{const first=domain.challenges?.[0]; if(first) setActive({domain,challenge:first});}}>Rules & challenges <ArrowUpRight size={14}/></button><Link className="button button-red" href={`/register?domain=${domain.slug}`}>Register <ArrowUpRight size={14}/></Link></div>
+        <div className="experience-actions"><button type="button" className="text-link" onClick={()=>{const first=domain.challenges?.[0]; if(first) setActive({domain,challenge:first});}}>Rules & challenges <ArrowUpRight size={14}/></button><Link className="button button-red" href={`/register?domain=${domain.slug}`}>Register <span className="sr-only">Registration form</span> <ArrowUpRight size={14}/></Link></div>
       </article>})}
     </div>
     {active&&<div className="domain-modal-backdrop" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)setActive(null)}} onClick={e=>{if(e.target===e.currentTarget)setActive(null)}}><section className="domain-modal" role="dialog" aria-modal="true" aria-labelledby="domain-modal-title" onClick={e=>e.stopPropagation()}>
@@ -40,7 +40,7 @@ export default function DomainExperience({mode='cards',slug}:{mode?:'cards'|'det
         </article>
           <div className="modal-notice">{active.domain.registrationOpen?'Registration is open for this domain.':'Registration closes on 21 November 2026.'} All participants must report with institutional ID at BGS Seminar Hall.</div>
       </div>
-      <footer className="domain-modal-footer"><button className="button button-outline" onClick={()=>setActive(null)}>Close details</button><Link className="button button-red" href={`/register?domain=${active.domain.slug}&challenge=${active.challenge.id}`}>Register for this challenge <ArrowUpRight size={15}/></Link></footer>
+      <footer className="domain-modal-footer"><button className="button button-outline" onClick={()=>setActive(null)}>Close details</button><Link className="button button-red" href={`/register?domain=${active.domain.slug}&challenge=${active.challenge.id}`}>Register for this challenge <span className="sr-only">Registration form</span> <ArrowUpRight size={15}/></Link></footer>
     </section></div>}
   </>;
 }
