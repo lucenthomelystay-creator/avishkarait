@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { eventDomains } from './domain-content';
+import { githubUsernameSchema } from './github-username';
 
 const email = z.string().trim().email().max(254);
-const github = z.string().trim().max(39).regex(/^[A-Za-z0-9-]*$/, 'Use a valid GitHub username.').optional().or(z.literal(''));
+// Shared with the participant API so both endpoints accept the same formats.
+const github = githubUsernameSchema;
 const memberSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email,

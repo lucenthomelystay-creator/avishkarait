@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTeamByUid, getSiteSettings } from '@/lib/supabase-admin';
-import { createRazorpayOrder } from '@/lib/razorpay';
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,23 +15,33 @@ export async function POST(req: NextRequest) {
     }
 
     const settings = await getSiteSettings();
-    const feeAmount = settings?.registration_fee || 1500;
 
-    const orderData = await createRazorpayOrder({
-      teamUid: team.team_uid,
-      teamName: team.team_name,
-      amountInr: feeAmount,
-    });
+    // UPI only - no Razorpay order creation
+    // Check if UPI is configured
+    if (!settings?.upi_id) {
+      return NextResponse.json({
+        error: 'UPI payment is not yet configured. Please contact the administrator.'
+      }, { status: 503 });
+    }
 
+    // Return UPI static payment details
     return NextResponse.json({
       success: true,
-      order: orderData,
+      upiId: settings.upi_id,
+      beneficiaryName: settings.beneficiary_name || 'COLLEGE EVENT ACCOUNT',
+      amount: settings.registration_fee || 1500,
+      // Static QR code will be displayed to the user
+      // No order ID needed for UPI - use teamUid as reference
+      staticPayment: {
+        type: 'upi',
+        upiUrl: `upi://pay?pa=${settings.upi_id}&pn=${settings.beneficiary_name || 'COLLEGE EVENT ACCOUNT'}&am=${settings.registration_fee || 1500}&cu=INR&mc=5122`,
+        qrCodeUrl: settings.official_qr_image_url || null,
+      },
       team: {
         teamUid: team.team_uid,
         teamName: team.team_name,
         teamLeadName: team.team_lead_name,
         teamLeadEmail: team.team_lead_email,
-        teamLeadPhone: team.team_lead_phone,
       },
     });
   } catch (error: any) {
@@ -40,4 +49,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Failed to create payment order' }, { status: 500 });
   }
 }
-
