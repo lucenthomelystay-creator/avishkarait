@@ -181,14 +181,14 @@ export const eventDomains: EventDomain[] = [
     ],
   },
 
-  // ── 05 · CIVILX ────────────────────────────────────────────────────────────
+  // ── 05 · THEODO ────────────────────────────────────────────────────────────
   // Three sub-challenges with distinct team sizes (all confirmed):
   //   BRIDGE-X: exactly 4 members
   //   CADATHON: exactly 2 members; offline; AutoCAD residential building design
   //   SURVEYOR-X: exactly 4 members; participants bring calculator; practical levelling
   {
-    number: '05', code: 'CIV', slug: 'civilx',
-    name: 'CIVILX – Civil Engineering & Structural Innovation',
+    number: '05', code: 'CIV', slug: 'theodo',
+    name: 'THEODO – Civil Engineering & Structural Innovation',
     short: 'Structural thinking, drafting and field engineering.',
     description: 'Apply civil engineering skills to structural design, AutoCAD drafting and field surveying challenges.',
     focus: ['Structural design and innovation', 'Civil CAD and building design', 'Surveying and field levelling'],
