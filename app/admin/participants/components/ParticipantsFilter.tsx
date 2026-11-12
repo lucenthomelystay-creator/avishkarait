@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Search, Filter, Loader2, TrendingUp } from 'lucide-react';
+import { Search, Filter, Loader2, TrendingUp, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 type Participant = {
@@ -42,6 +42,26 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
   const [query, setQuery] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function permanentlyDeleteRegistration(reg: Registration) {
+    const label = `${reg.team_name || 'Unnamed team'} (${reg.team_uid || reg.reference_id})`;
+    const confirmed = window.confirm(
+      `PERMANENTLY DELETE ${label}?\n\nThis removes the registration and its linked team, member, accommodation and meal check-in records. Payment details stored on the registration will also be deleted. The action cannot be undone.\n\nContinue only if this is an unwanted/duplicate registration.`
+    );
+    if (!confirmed) return;
+    setDeletingId(reg.id);
+    try {
+      const response = await fetch(`/api/admin/registrations/${encodeURIComponent(reg.id)}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || 'Registration could not be deleted.');
+      window.alert('Registration permanently deleted.');
+      window.location.reload();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Registration could not be deleted.');
+      setDeletingId(null);
+    }
+  }
 
   // Filter status options - only pending, approved, rejected
   const statusOptions = [
@@ -200,6 +220,18 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
               </summary>
 
               <div className="admin-detail">
+                <div className="flex justify-end mb-4">
+                  <button
+                    type="button"
+                    className="button button-outline text-red-600 border-red-600"
+                    disabled={deletingId === reg.id}
+                    onClick={() => void permanentlyDeleteRegistration(reg)}
+                  >
+                    <Trash2 size={15} />
+                    {deletingId === reg.id ? 'Deleting…' : 'Permanently delete registration'}
+                  </button>
+                </div>
+
                 <div className="admin-team-info">
                   <h3>{reg.team_name || 'Unnamed Team'}</h3>
                   <p><strong>College:</strong> {reg.institution || 'Unknown College'}</p>
