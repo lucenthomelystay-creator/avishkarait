@@ -281,3 +281,97 @@
   .sponsor-cta{padding:22px}
   .footer-credit{font-size:10px}
 }
+
+
+/* AVISHKAR 2K26 — crimson cyberpunk visual system */
+:root{color-scheme:dark;--cyber-bg:#07070c;--cyber-panel:#101019;--cyber-panel-2:#15121d;--cyber-line:#ffffff20;--cyber-red:#ff3158;--cyber-pink:#ff27b8;--cyber-text:#f7f4fa;--cyber-muted:#b6adbd}
+html,body{background:var(--cyber-bg);color:var(--cyber-text)}
+body{background-image:radial-gradient(ellipse at 12% 8%,#d7193526,transparent 34%),radial-gradient(ellipse at 88% 24%,#ff27b814,transparent 28%),linear-gradient(180deg,#07070c 0%,#0a0810 52%,#07070c 100%);background-attachment:fixed}
+body:before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.16;background-image:linear-gradient(#ffffff0a 1px,transparent 1px),linear-gradient(90deg,#ffffff0a 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(180deg,#000,transparent 82%)}
+body>*{position:relative;z-index:1}
+.header,.top-navbar{background:#08080df2!important;color:#fff!important;border-color:#ffffff20!important;backdrop-filter:blur(18px)}
+.brand-mark,.brand-copy b{color:#fff!important}.brand-copy small,.nav-link{color:#c4bdc9!important}.nav-link:hover,.nav-link.active{color:var(--cyber-pink)!important}
+.announcement{background:linear-gradient(90deg,#8f1026,#d71935 55%,#8f1026)!important}
+.hero,.manifesto,.prize-section{background:#08070d!important;color:#fff!important}
+.hero{background-image:radial-gradient(ellipse at 76% 48%,#d7193540,transparent 34%),linear-gradient(120deg,#08070d,#120814 58%,#08070d)!important}
+.hero-grid,.manifesto-grid,.page-hero-pattern{opacity:.5;background-image:linear-gradient(#ff315812 1px,transparent 1px),linear-gradient(90deg,#ff315812 1px,transparent 1px)!important}
+.hero:after{border-color:#ff315855!important;box-shadow:0 0 55px #d7193524,0 0 0 60px #d7193510,0 0 0 120px #d7193508!important}
+.hero h1 span,.about-layout h2 span,.domain-heading h2 span,.prose-grid h2 span,.contact-info h2 span,.town-intro-grid h2 span,.travel-lead-grid h2 span,.travel-practical h2 span,.contact-map h2 span{color:var(--cyber-pink)!important;text-shadow:0 0 22px #ff27b84d}
+.hero h1{filter:drop-shadow(0 0 28px #d7193526)}
+.count-strip,.day-card,.town-intro,.sponsor-placeholder-card,.travel-service-card,.travel-highlight,.utility-card,.table-clean th{background:#111019!important;color:#f7f4fa!important;border-color:#ffffff20!important}
+.section-label,.domain-row,.rule-row,.faq-row,.travel-article,.town-place-grid article,.sponsor-line,.sponsor-line>div{border-color:#ffffff24!important;color:#c9c1ce!important}
+.section-label,.eyebrow,.domain-no,.domain-icon,.domain-arrow,.text-link,.count-intro small,.count-place,.countdown small,.town-place-grid article small,.travel-article small{color:#ff5577!important}
+.section h2,.section h3,.section h4,.section p,.domain-row h3,.about-layout h2,.domain-heading h2,.prose-grid h2,.contact-info h2,.town-intro-grid h2,.travel-lead-grid h2,.travel-practical h2,.contact-map h2{color:inherit}
+.section p,.domain-row p,.about-copy>p:not(.lead),.prose-grid p:not(.lead),.town-place-grid p,.travel-article-copy p,.travel-service-card p,.travel-highlight{color:#c3bac9!important}
+.domain-row:hover,.experience-card,.portal-panel,.utility-card,.registration-team-card,.registration-review article,.admin-passkey-card,.domain-modal,.sponsor-placeholder-card{background:linear-gradient(145deg,#15121d,#0d0c13)!important;color:#f7f4fa!important;border:1px solid #ffffff24!important;box-shadow:0 12px 35px #0008,0 0 0 1px #ff31580b}
+.experience-card,.portal-panel,.registration-team-card,.domain-modal,.admin-passkey-card{position:relative;overflow:hidden}
+.experience-card:before,.portal-panel:before,.registration-team-card:before{content:"";position:absolute;inset:0 0 auto;height:2px;background:linear-gradient(90deg,transparent,var(--cyber-red),var(--cyber-pink),transparent);opacity:.8;pointer-events:none}
+.experience-card h3,.domain-modal h2,.domain-modal h3,.portal-panel h2,.portal-panel h3,.registration-team-head h3{color:#fff!important}
+.experience-card p,.domain-modal p,.domain-modal li,.portal-panel p,.registration-team-card p{color:#c8bfce}
+.experience-facts,.modal-info-block,.modal-challenge,.team-rules-summary,.registration-fee-summary,.registration-review article,.member-block{background:#0b0a11!important;border-color:#ffffff20!important;color:#eee!important}
+.domain-modal-backdrop{background:#030207d9!important;backdrop-filter:blur(10px)}
+.domain-modal-header,.domain-modal-footer{background:#100d16!important;border-color:#ffffff20!important}
+.domain-modal-close,.challenge-tabs button,.registration-mode button,.registration-team-head button,.member-label button{background:#211725!important;color:#fff!important;border-color:#ffffff30!important}
+.challenge-tabs button.active,.button-red{background:linear-gradient(110deg,#a90f32,#ed174d 60%,#ff27a8)!important;color:#fff!important;border-color:#ff5577!important;box-shadow:0 0 24px #d7193540}
+.button-outline{border-color:#ff557766!important;color:#fff!important;background:#ffffff08}
+.button-outline:hover{background:#d7193526!important;border-color:#ff5577!important}
+.button-light{background:#fff!important;color:#08070d!important}
+.form label,.form-heading,.member-label,.registration-mode,.team-rules-summary>span,.rule-facts,.registration-fee-summary{color:#e8e0ec!important}
+.form input,.form select,.form textarea,.admin-toolbar input,.admin-toolbar select,.portal-toolbar input,.portal-toolbar select{background:#0b0a11!important;color:#fff!important;border:1px solid #ffffff30!important;border-radius:4px;min-width:0;max-width:100%}
+.form input:focus,.form select:focus,.form textarea:focus{outline:2px solid #ff3158!important;outline-offset:1px}
+.form input::placeholder,.form textarea::placeholder{color:#887f8e}
+.check-label,.form-note,.registration-review p,.registration-review li,.fee-calculator,.register-intro>p{color:#c5bccb!important}
+.form-error,.service-message{background:#2b101c!important;border-color:#ff3158!important;color:#fff!important}
+.admin-registration summary,.domain-admin-row summary,.faq-row button{color:#fff!important}
+.admin-detail,.admin-registration-list,.domain-admin,.announcement-admin{color:#eee!important}
+.admin-registration,.domain-admin-row,.member-row,.admin-team-info,.admin-leader-info{border-color:#ffffff24!important}
+.status-pill,.registration-closed{color:#ff8ba4!important}
+.footer{background:#06060a!important;color:#eae5ed!important;border-top:1px solid #ffffff22}
+.footer a,.footer p,.footer small{color:#bdb4c4!important}
+.map-frame{border-color:#ffffff30!important}
+@keyframes cyber-flicker{0%,100%{opacity:1}48%{opacity:.96}50%{opacity:.88}52%{opacity:1}}
+@keyframes cyber-rise{from{opacity:0;transform:translateY(18px);filter:blur(4px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+.hero-content{animation:cyber-rise .8s cubic-bezier(.2,.75,.3,1) both}
+.experience-card,.registration-team-card,.portal-panel{animation:cyber-rise .55s ease both}
+@media(hover:hover) and (pointer:fine){.experience-card:hover,.registration-team-card:hover,.portal-panel:hover{transform:translateY(-5px);border-color:#ff315888!important;box-shadow:0 18px 45px #000a,0 0 24px #d7193520!important}.domain-modal .button:hover,.button-red:hover{filter:brightness(1.14);box-shadow:0 0 28px #ff315866!important}}
+/* Android / narrow-screen registration layout: prevent grid children and long rules from overflowing. */
+.registration-workflow,.registration-form-wrap,.registration-form,.registration-team-card,.member-block,.form-grid,.form-grid>label,.registration-review,.domain-modal,.domain-modal-body{min-width:0;max-width:100%}
+.registration-form-wrap{width:100%;overflow:hidden}
+.registration-form .form-grid,.registration-team-card .form-grid,.member-block .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.registration-form label,.registration-team-card label,.member-block label{min-width:0;width:100%;overflow-wrap:anywhere}
+.registration-form input,.registration-form select,.registration-form textarea,.registration-team-card input,.registration-team-card select,.member-block input{width:100%;min-width:0}
+.confirmed-rule,.team-rules-summary p,.registration-review li,.domain-modal li{overflow-wrap:anywhere;word-break:normal}
+@media(max-width:760px){
+  .registration-workflow{display:block!important;padding-left:16px!important;padding-right:16px!important}
+  .register-intro{margin-bottom:24px}
+  .registration-form-wrap{width:100%;padding:0!important}
+  .registration-form .form-grid,.registration-team-card .form-grid,.member-block .form-grid{grid-template-columns:minmax(0,1fr)!important;gap:12px}
+  .registration-team-card{padding:16px!important;margin:12px 0!important}
+  .registration-mode{align-items:flex-start!important;flex-direction:column!important;gap:12px}
+  .registration-mode button,.submit-btn,.review-actions .button{width:100%;justify-content:center}
+  .member-block{padding:12px!important}
+  .registration-team-head{gap:10px;align-items:flex-start}
+  .registration-team-head h3{overflow-wrap:anywhere}
+  .registration-fee-summary{display:grid!important;gap:8px}
+  .review-actions{display:grid!important;grid-template-columns:1fr!important;gap:10px}
+  .domain-modal-backdrop{padding:8px!important}
+  .domain-modal{max-height:calc(100dvh - 16px)!important;width:100%!important}
+  .domain-modal-header,.domain-modal-footer{padding:16px!important;gap:12px!important}
+  .domain-modal-footer{display:grid!important;grid-template-columns:1fr!important}
+  .domain-modal-footer .button{width:100%;white-space:normal}
+  .modal-detail-columns{grid-template-columns:1fr!important}
+  .domain-coordinator-grid{grid-template-columns:1fr!important}
+  .hero-content{padding-left:18px!important;padding-right:18px!important}
+  .hero h1{font-size:clamp(76px,18vw,132px)!important;overflow-wrap:anywhere}
+  .countdown{gap:14px!important}
+  .count-strip{gap:18px;flex-wrap:wrap}
+}
+.domain-coordinator-panel{margin-top:22px;padding:18px;border:1px solid #ff31584d;background:linear-gradient(135deg,#d7193519,#ff27b80a 65%,#08070d);box-shadow:0 0 24px #d7193510}
+.domain-coordinator-heading{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;font:9px 'DM Mono',monospace;letter-spacing:.1em;color:#ff6683}
+.domain-coordinator-heading b{color:#fff}
+.domain-coordinator-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.domain-coordinator-grid a{display:grid;gap:6px;padding:12px;background:#09080fc9;border:1px solid #ffffff20;min-width:0}
+.domain-coordinator-grid a small{font:8px 'DM Mono',monospace;color:#c4b7c9;letter-spacing:.05em}
+.domain-coordinator-grid a strong{font:600 14px 'DM Mono',monospace;color:#ff5c85;overflow-wrap:anywhere}
+.domain-coordinator-grid a:hover{border-color:#ff3158;box-shadow:0 0 16px #d7193525}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
