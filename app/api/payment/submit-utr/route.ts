@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 
   const { data: registration, error: lookupError } = await db
     .from('registrations')
-    .select('id, payment_status')
+    .select('id, payment_status, payment_reference')
     .eq('team_uid', teamUid)
     .maybeSingle();
 
@@ -94,6 +94,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: 'This registration is already marked as paid. Contact the organisers if you need a correction.' },
       { status: 409, headers: noStore }
+    );
+  }
+
+  // Make client retries idempotent: don't rewrite an already-pending identical UTR.
+  // A different UTR, or a previously rejected submission, can still be resubmitted.
+  if (registration.payment_status === 'PENDING' && registration.payment_reference === utrReference) {
+    return NextResponse.json(
+      {
+        success: true,
+        paymentStatus: 'PENDING',
+        paymentReference: utrReference,
+        message: 'This payment reference is already submitted and pending verification.',
+      },
+      { headers: noStore }
     );
   }
 
