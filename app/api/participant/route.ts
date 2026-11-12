@@ -162,6 +162,66 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const captchaToken =
+    typeof body === 'object' && body !== null && 'captchaToken' in body &&
+    typeof (body as { captchaToken?: unknown }).captchaToken === 'string'
+      ? (body as { captchaToken: string }).captchaToken
+      : '';
+  const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+
+  // Fail closed: never create participant accounts if server-side CAPTCHA
+  // verification is unavailable or the submitted token is invalid.
+  if (!turnstileSecret) {
+    console.error('Participant registration blocked: TURNSTILE_SECRET_KEY is not configured.');
+    return NextResponse.json(
+      { error: 'Registration security verification is not configured. Please contact the organisers.' },
+      { status: 503, headers: { 'cache-control': 'no-store' } }
+    );
+  }
+  if (!captchaToken) {
+    return NextResponse.json(
+      { error: 'Complete the CAPTCHA verification before submitting your registration.' },
+      { status: 400, headers: { 'cache-control': 'no-store' } }
+    );
+  }
+
+  try {
+    const verificationBody = new URLSearchParams({
+      secret: turnstileSecret,
+      response: captchaToken,
+    });
+    if (ip !== 'unknown') verificationBody.set('remoteip', ip);
+
+    const verificationResponse = await fetch(
+      'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: verificationBody,
+        cache: 'no-store',
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+    const verification = (await verificationResponse.json()) as {
+      success?: boolean;
+      'error-codes'?: string[];
+    };
+
+    if (!verificationResponse.ok || verification.success !== true) {
+      console.warn('Turnstile verification rejected a registration attempt:', verification['error-codes'] ?? []);
+      return NextResponse.json(
+        { error: 'CAPTCHA verification failed or expired. Please complete it again.' },
+        { status: 400, headers: { 'cache-control': 'no-store' } }
+      );
+    }
+  } catch (error) {
+    console.error('Turnstile verification service unavailable:', error);
+    return NextResponse.json(
+      { error: 'CAPTCHA verification is temporarily unavailable. Please try again.' },
+      { status: 502, headers: { 'cache-control': 'no-store' } }
+    );
+  }
+
   const parsed = participantSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
