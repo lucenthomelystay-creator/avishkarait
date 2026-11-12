@@ -32,24 +32,40 @@ export async function POST(request: NextRequest) {
   // internally configured email as the account identifier; no email is sent.
   if (username.toLowerCase() !== expectedUsername.trim().toLowerCase()) return failure();
 
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase is not configured.' }, { status: 503 });
+  try {
+    const supabase = await createSupabaseServerClient();
+    if (!supabase) {
+      return NextResponse.json({ error: 'Supabase is not configured on this deployment. Check the Supabase URL and publishable/anon key in Vercel.' }, { status: 503, headers: { 'cache-control': 'no-store' } });
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: passphrase });
+    if (error || !data.user) {
+      // Keep invalid credentials indistinguishable, but record the provider error
+      // server-side so network/configuration failures can be diagnosed safely.
+      if (error) console.error('[admin-login] Supabase password sign-in failed:', error.message);
+      return failure();
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', data.user.id)
+      .maybeSingle();
+    if (profileError || profile?.role !== 'admin') {
+      if (profileError) console.error('[admin-login] Could not verify administrator profile:', profileError.message);
+      await supabase.auth.signOut();
+      return failure();
+    }
+
+    return NextResponse.json({ success: true }, { headers: { 'cache-control': 'no-store' } });
+  } catch (cause) {
+    // A rejected fetch (for example, "Load failed") means the Auth service
+    // could not be reached; do not expose provider internals to the browser.
+    console.error('[admin-login] Supabase Auth request could not be completed:', cause);
+    return NextResponse.json(
+      { error: 'Could not reach Supabase Auth. Check the Supabase project status and the Supabase URL/key configured in Vercel, then try again.' },
+      { status: 503, headers: { 'cache-control': 'no-store' } },
+    );
   }
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email: authEmail, password: passphrase });
-  if (error || !data.user) return failure();
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', data.user.id)
-    .maybeSingle();
-  if (profileError || profile?.role !== 'admin') {
-    await supabase.auth.signOut();
-    return failure();
-  }
-
-  return NextResponse.json({ success: true }, { headers: { 'cache-control': 'no-store' } });
 }
 
