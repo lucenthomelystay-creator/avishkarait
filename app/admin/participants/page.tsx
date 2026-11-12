@@ -14,9 +14,13 @@ export default async function AdminParticipantsPage() {
   if (role !== 'admin') return <main className="section"><h1>Administrator access required</h1><p>This account does not have the administrator role.</p></main>;
 
   const [{ data: registrations }, { data: domains }] = await Promise.all([
-    supabase.from('registrations').select('id,reference_id,team_uid,team_name,institution,status,created_at,challenge_id,domain:domains(id,name,event_details),team:teams(id,name,institution,college_city,college_state,domain_id,challenge_id,assigned_repository_url,members:team_members(id,full_name,email,github_username,is_leader))').order('created_at',{ascending:false}),
+    supabase.from('registrations').select('id,reference_id,team_uid,team_name,institution,status,created_at,challenge_id,domain:domains(id,name,event_details),team:teams(id,name,institution,college_city,college_state,domain_id,challenge_id,assigned_repository_url,members:team_members(id,profile_id,full_name,email,github_username,is_leader))').order('created_at',{ascending:false}),
     supabase.from('domains').select('id,name,slug,is_active,event_details').order('name'),
   ]);
+
+  const profileIds = Array.from(new Set((registrations || []).flatMap((reg: any) => { const team = Array.isArray(reg.team) ? reg.team[0] : reg.team; return (team?.members || []).map((member: any) => member.profile_id).filter(Boolean); })));
+  const { data: memberProfiles } = profileIds.length ? await supabase.from('profiles').select('id,phone').in('id', profileIds) : { data: [] as { id: string; phone: string | null }[] };
+  const phoneByProfileId = new Map((memberProfiles || []).map((profile: any) => [profile.id, profile.phone || '']));
 
   // Build domain options from fetched data
   const domainOptions = (domains || []).map((d: any) => ({
@@ -81,6 +85,7 @@ export default async function AdminParticipantsPage() {
         id: m.id,
         full_name: m.full_name,
         email: m.email,
+        phone: m.profile_id ? phoneByProfileId.get(m.profile_id) || '' : '',
         github_username: m.github_username || '',
         is_leader: m.is_leader,
       })),
