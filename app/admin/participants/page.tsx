@@ -14,7 +14,7 @@ export default async function AdminParticipantsPage() {
   if (role !== 'admin') return <main className="section"><h1>Administrator access required</h1><p>This account does not have the administrator role.</p></main>;
 
   const [{ data: registrations }, { data: domains }] = await Promise.all([
-    supabase.from('registrations').select('id,reference_id,team_uid,team_name,institution,status,created_at,challenge_id,domain:domains(id,name,event_details),team:teams(id,name,institution,college_city,college_state,domain_id,challenge_id,assigned_repository_url,members:team_members(id,full_name,email,github_username,is_leader))').order('created_at',{ascending:false}),
+    supabase.from('registrations').select('id,reference_id,team_uid,team_name,institution,status,created_at,challenge_id,leader_profile:profiles!registrations_leader_id_fkey(phone),domain:domains(id,name,event_details),team:teams(id,name,institution,college_city,college_state,domain_id,challenge_id,assigned_repository_url,members:team_members(id,full_name,email,github_username,is_leader))').order('created_at',{ascending:false}),
     supabase.from('domains').select('id,name,slug,is_active,event_details').order('name'),
   ]);
 
@@ -29,6 +29,7 @@ export default async function AdminParticipantsPage() {
     const team = reg.team || {};
     const domain = reg.domain?.[0] || {};
     const members = team.members || [];
+    const leaderProfile = Array.isArray(reg.leader_profile) ? reg.leader_profile[0] : reg.leader_profile;
 
     // Determine registration status (pending / approved / rejected)
     const registrationStatus = reg.status || 'pending';
@@ -82,6 +83,7 @@ export default async function AdminParticipantsPage() {
         full_name: m.full_name,
         email: m.email,
         github_username: m.github_username || '',
+        phone: m.is_leader ? (leaderProfile?.phone || '') : '',
         is_leader: m.is_leader,
       })),
     };
