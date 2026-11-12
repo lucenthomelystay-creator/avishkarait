@@ -21,6 +21,7 @@ export async function GET(request: Request) {
         status,
         created_at,
         challenge_id,
+        leader_profile:profiles!registrations_leader_id_fkey(phone),
         domain:domains(id, name, event_details),
         team:teams(id, name, institution, college_city, college_state, domain_id, challenge_id, assigned_repository_url, members:team_members(id, full_name, email, github_username, is_leader))
       `)
@@ -52,6 +53,7 @@ export async function GET(request: Request) {
       const team = reg.team || {};
       const domain = reg.domain?.[0] || {};
       const members = team.members || [];
+      const leaderProfile = Array.isArray(reg.leader_profile) ? reg.leader_profile[0] : reg.leader_profile;
 
       // Determine registration status (pending / approved / rejected)
       const registrationStatus = reg.status || 'pending';
@@ -105,6 +107,7 @@ export async function GET(request: Request) {
           full_name: m.full_name,
           email: m.email,
           github_username: m.github_username || '',
+          phone: m.is_leader ? (leaderProfile?.phone || '') : '',
           is_leader: m.is_leader,
         })),
       };
