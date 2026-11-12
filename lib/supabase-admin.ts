@@ -744,6 +744,21 @@ export async function logVisitor(params: {
   const { anonymousVisitorId, pagePath, referralSource, deviceCategory } = params;
 
   if (isLiveSupabaseConfigured && supabaseAdmin) {
+    // Keep analytics bounded: count a visitor once per page per UTC day.
+    // This avoids unbounded duplicate rows from refreshes and repeated tracking calls.
+    const dayStart = new Date();
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const { data: existingVisit, error: lookupError } = await supabaseAdmin
+      .from('visitor_analytics')
+      .select('id')
+      .eq('anonymous_visitor_id', anonymousVisitorId)
+      .eq('page_path', pagePath)
+      .gte('visited_at', dayStart.toISOString())
+      .limit(1)
+      .maybeSingle();
+
+    if (!lookupError && existingVisit) return;
+
     await supabaseAdmin.from('visitor_analytics').insert({
       anonymous_visitor_id: anonymousVisitorId,
       page_path: pagePath,
