@@ -8,6 +8,7 @@ type Participant = {
   id: string;
   full_name: string;
   email: string;
+  phone: string;
   github_username: string;
   is_leader: boolean;
 };
@@ -73,7 +74,7 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
         const participantMatch = reg.participants?.some(
           (p: any) => (p.full_name || '').toLowerCase().includes(searchTerm) ||
                        (p.email || '').toLowerCase().includes(searchTerm) ||
-                       (p.github_username || '').toLowerCase().includes(searchTerm)
+                       (p.github_username || '').toLowerCase().includes(searchTerm) || (p.phone || '').toLowerCase().includes(searchTerm)
         );
         return teamNameLower.includes(searchTerm) ||
           teamUidLower.includes(searchTerm) ||
@@ -218,6 +219,7 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
                   {leader && (
                     <p><strong>GitHub:</strong> {leader.github_username || 'Not provided'}</p>
                   )}
+                  {leader && <p><strong>Phone:</strong> {leader.phone || 'Not available'}</p>}
                 </div>
 
                 <div className="admin-members-section">
@@ -229,7 +231,7 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
                         {p.is_leader && <span className="leader-badge">Leader</span>}
                       </span>
                       <span className="member-email">{p.email || '—'}</span>
-                      <span className="member-phone">{'—'}</span>
+                      <span className="member-phone">{p.phone || 'Not available'}</span>
                     </div>
                   ))}
                   {reg.participants?.length ? null : (
