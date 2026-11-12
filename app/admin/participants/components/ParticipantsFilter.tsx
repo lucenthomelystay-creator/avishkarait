@@ -9,6 +9,7 @@ type Participant = {
   full_name: string;
   email: string;
   github_username: string;
+  phone?: string;
   is_leader: boolean;
 };
 
@@ -248,6 +249,9 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
                     <p><strong>Email:</strong> {leader.email || 'Not provided'}</p>
                   )}
                   {leader && (
+                    <p><strong>Phone:</strong> {leader.phone || 'Not provided'}</p>
+                  )}
+                  {leader && (
                     <p><strong>GitHub:</strong> {leader.github_username || 'Not provided'}</p>
                   )}
                 </div>
@@ -261,7 +265,7 @@ export default function ParticipantsFilter({ teams, domainOptions }: Props) {
                         {p.is_leader && <span className="leader-badge">Leader</span>}
                       </span>
                       <span className="member-email">{p.email || '—'}</span>
-                      <span className="member-phone">{'—'}</span>
+                      <span className="member-phone">{p.is_leader ? (p.phone || '—') : '—'}</span>
                     </div>
                   ))}
                   {reg.participants?.length ? null : (
