@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowUpRight, Atom, Code2, Cpu, Hammer, Radio, Shield, X } from 'lucide-react';
-import { eventDomains, type EventDomain, type DomainChallenge } from '@/lib/domain-content';
+import { eventDomains, collegeSpoc, facultyCoordinators, studentCoordinators, type EventDomain, type DomainChallenge } from '@/lib/domain-content';
 
 const icons=[Shield,Code2,Radio,Hammer,Atom];
 function teamSize(domain:EventDomain,challenge?:DomainChallenge){
@@ -39,6 +39,7 @@ export default function DomainExperience({mode='cards',slug}:{mode?:'cards'|'det
           <div className="modal-detail-columns"><div><h4>Requirements & rules</h4><ul>{(active.challenge.requirements??[]).map(item=><li key={item}>{item}</li>)}</ul></div><div><h4>Evaluation</h4><ul>{(active.challenge.evaluation??[]).map(item=><li key={item}>{item}</li>)}</ul></div></div>
         </article>
           <div className="modal-notice">{active.domain.registrationOpen?'Registration is open for this domain.':'Registration closes on 21 November 2026.'} All participants must report with institutional ID at BGS Seminar Hall.</div>
+          <section className="domain-coordinator-panel"><div className="domain-coordinator-heading"><span>NEED HELP WITH THIS DOMAIN?</span><b>COORDINATOR HOTLINE</b></div><div className="domain-coordinator-grid"><a href={`tel:${collegeSpoc.phone.replace(/[^+0-9]/g,'')}`}><small>COLLEGE SPOC · {collegeSpoc.name}</small><strong>{collegeSpoc.phone}</strong></a>{facultyCoordinators.map(person=><a key={person.name} href={`tel:${person.phone.replace(/[^+0-9]/g,'')}`}><small>FACULTY · {person.name}</small><strong>{person.phone}</strong></a>)}{studentCoordinators.map(person=><a key={person.name} href={`tel:${person.phone.replace(/[^+0-9]/g,'')}`}><small>STUDENT · {person.name}</small><strong>{person.phone}</strong></a>)}</div></section>
       </div>
       <footer className="domain-modal-footer"><button className="button button-outline" onClick={()=>setActive(null)}>Close details</button><Link className="button button-red" href={`/register?domain=${active.domain.slug}&challenge=${active.challenge.id}`}>Register for this challenge <span className="sr-only">Registration form</span> <ArrowUpRight size={15}/></Link></footer>
     </section></div>}
