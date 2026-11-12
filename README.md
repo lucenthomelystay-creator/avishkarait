@@ -34,6 +34,18 @@ Stop the server with Ctrl+C. For production, run `npm run build` followed by `np
 5. Configure custom SMTP in Supabase Authentication / SMTP Settings if magic links must be delivered to users outside your Supabase organisation or you need more than the built-in email limit. Hosting on Vercel does not change Supabase's email limits.
 6. Set `ADMIN_LOGIN_USERNAME` and `ADMIN_LOGIN_EMAIL` in the server environment. Create the matching Auth user manually in Supabase with a strong password and mark its email as confirmed; this setup does not require sending an email. The admin login form asks for the username and password (passphrase), while the mapped Auth email stays server-side. Team leader magic-link sign-in remains separate and still uses email.
 
+## Registration CAPTCHA (Cloudflare Turnstile)
+
+The public registration review step requires Cloudflare Turnstile verification. The registration API independently verifies every token with Cloudflare before creating a participant account; missing, invalid, expired, or unverifiable tokens are rejected.
+
+1. In the Cloudflare dashboard, open Turnstile and add a widget for your production hostname (and localhost if you test locally).
+2. Copy the widget's **site key** into `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in `.env.local` and the Vercel project environment.
+3. Copy the widget's **secret key** into `TURNSTILE_SECRET_KEY` in `.env.local` and the Vercel project environment. This is server-only: never prefix it with `NEXT_PUBLIC_` and never commit its value.
+4. Set both variables for the Vercel environments you use (Production, Preview, and Development as appropriate), then redeploy.
+5. Keep the Cloudflare widget hostname allowlist limited to the actual event website and required preview/local development hosts.
+
+If either key is missing, registration intentionally fails closed rather than accepting an unverified submission.
+
 ## Configure Supabase
 
 1. Create a Supabase project. In Project Settings / API, copy the Project URL and publishable key (or use the legacy anon key if that is what your project provides).
