@@ -2,12 +2,24 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  // Keep the public landing page independent of Supabase availability.
-  if (request.nextUrl.pathname === '/') {
+  const pathname = request.nextUrl.pathname;
+
+  // Public pages must not depend on Supabase Auth being responsive.
+  // Authentication is still verified server-side by protected pages and APIs.
+  const isPortalRoute = pathname === '/portal' || pathname.startsWith('/portal/');
+  const isAdminRoute =
+    (pathname === '/admin' || pathname.startsWith('/admin/')) &&
+    pathname !== '/admin/login' &&
+    !pathname.startsWith('/admin/login/');
+
+  if (!isPortalRoute && !isAdminRoute) {
     return NextResponse.next({ request });
   }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
@@ -22,12 +34,9 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // getUser verifies the token with Supabase and refreshes cookies where needed.
-  // Skip auth check for public routes (register, register/[slug], login)
-  const pathname = request.nextUrl.pathname;
-  if (!pathname.startsWith('/_next') && !pathname.startsWith('/api') && !pathname.startsWith('/register') && !pathname.startsWith('/login')) {
-    await supabase.auth.getUser();
-  }
+  // Verify protected-route sessions and refresh cookies when required.
+  // Protected pages still perform their own authorization and role checks.
+  await supabase.auth.getUser();
 
   return response;
 }
