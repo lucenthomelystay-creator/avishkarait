@@ -3,6 +3,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const hostname = request.nextUrl.hostname.toLowerCase();
+
+  // Send registration traffic from the main site to the dedicated portal.
+  if (
+    (hostname === 'avishkarait.online' || hostname === 'www.avishkarait.online') &&
+    (pathname === '/register' || pathname.startsWith('/register/'))
+  ) {
+    const portalUrl = request.nextUrl.clone();
+    portalUrl.hostname = 'portal.avishkarait.online';
+    portalUrl.protocol = 'https:';
+    portalUrl.port = '';
+    return NextResponse.redirect(portalUrl, 308);
+  }
 
   // Public pages must not depend on Supabase Auth being responsive.
   // Authentication is still verified server-side by protected pages and APIs.
